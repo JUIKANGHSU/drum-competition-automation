@@ -1,3 +1,6 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_7558.jpeg" width="700" alt="project preview">
+</p>
 # 🥁 Drum Competition Automation (Google Apps Script)
 
 This project automates a full judging workflow for a music/drum competition using **Google Forms + Google Sheets + Google Docs + Google Drive + Gmail**.
