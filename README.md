@@ -8,7 +8,7 @@
 </p>
 
 
-# 🥁 Drum Competition Automation (Google Apps Script)
+# 🥁 Music Competition Automation 音樂比賽電子講評單自動化系統
 
 This project automates a full judging workflow for a music/drum competition using **Google Forms + Google Sheets + Google Docs + Google Drive + Gmail**.
 
