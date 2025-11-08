@@ -1,5 +1,6 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_7558.jpeg" width="700" alt="project preview">
+  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_2877.JPG" width="350" alt="project used to">
 </p>
 # 🥁 Drum Competition Automation (Google Apps Script)
 
