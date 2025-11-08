@@ -1,8 +1,12 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_7558.jpeg" width="600" alt="Event photo">
-  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_2877.JPG" width="300" alt="Automation screenshot">
-  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_9467.JPG" width="600" alt="Result PDF">
+  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_7558.jpeg" width="700" alt="Event photo">
 </p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_2877.JPG" height="350" alt="Judge report 1">
+  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_9467.JPG" height="350" alt="Judge report 2">
+</p>
+
 
 # 🥁 Drum Competition Automation (Google Apps Script)
 
