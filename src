@@ -1,0 +1,323 @@
+/**
+ * Drum Competition Automation
+ * ---------------------------
+ * 1. On form submit: route to category sheet, auto-create sheet, calculate average, sort.
+ * 2. Generate judge reports (Docs → PDF) grouped by the same participant.
+ * 3. Send generated PDFs to participants based on an email sheet.
+ *
+ * NOTE:
+ * - Replace all PLACEHOLDER_* with your own IDs/names.
+ * - This script is designed for Google Apps Script environment.
+ */
+
+/** ====== CONFIGURATION ====== */
+var CONFIG = {
+  FORM_SHEET_NAME: '表單回應 1', // change to your form response sheet name
+  CATEGORY_SHEET_NAMES: [
+    // put your real category sheet names here
+    'A00 爵士鼓 兒童組',
+    'A02 爵士鼓 國小二年級組',
+    'A03 爵士鼓 國小三年級組',
+    'A04 爵士鼓 國小四年級組',
+    'A05 爵士鼓國小五年級組',
+    'A06 爵士鼓國小六年級組',
+    'A07 爵士鼓國中一年級組',
+    'A08 爵士鼓國中二年級組 ',
+    'A09 爵士鼓國中三年級組',
+    'A10 爵士鼓高中組',
+    'A11 爵士鼓社會組',
+    'B00 電子鼓 國小兒童組',
+    'B01 電子鼓 國小一年級組',
+    'B02 電子鼓 國小二年級組',
+    'B03 電子鼓 國小三年級組',
+    'B04 電子鼓 國小四年級組',
+    'B05 電子鼓 國小五年級組',
+    'B06 電子鼓 國小六年級組',
+    'B08 電子鼓 國中二年級組',
+    'B11 電子鼓 社會組'
+  ],
+  /** === For document generation === */
+  SOURCE_SPREADSHEET_ID: 'PLACEHOLDER_SHEET_ID', // the sheet that stores competition data
+  DOC_TEMPLATE_ID: 'PLACEHOLDER_DOC_TEMPLATE_ID', // your Google Docs template id
+  ROOT_REPORT_FOLDER_NAME: '比賽講評單', // parent folder name to store PDFs
+
+  /** === For email sending === */
+  PDF_FOLDER_ID: 'PLACEHOLDER_PDF_FOLDER_ID', // the folder that stores generated PDFs
+  EMAIL_SHEET_ID: 'PLACEHOLDER_EMAIL_SHEET_ID', // sheet that maps EX_data -> email
+  EMAIL_SHEET_NAME: '學生信箱'
+};
+
+
+/** =========================================================
+ *  1. FORM SUBMIT → CREATE / ROUTE SHEET → AVG → SORT
+ * ========================================================= */
+function onFormSubmit(e) {
+  var ss = e.source;
+  var sheet = ss.getSheetByName(CONFIG.FORM_SHEET_NAME);
+
+  var rowData = e.values;
+  // assume headers of category are E1–X1
+  var headers = sheet.getRange(1, 5, 1, 24).getValues();
+
+  // find which category column has value in this submission
+  var categoryName = '';
+  for (var i = 0; i < headers[0].length; i++) {
+    if (rowData[i + 4]) {
+      categoryName = headers[0][i];
+      break;
+    }
+  }
+
+  if (categoryName) {
+    var targetSheet = ss.getSheetByName(categoryName);
+    if (!targetSheet) {
+      targetSheet = ss.insertSheet(categoryName);
+      // copy header from main sheet
+      var originalHeader = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues();
+      targetSheet.getRange(1, 1, 1, originalHeader[0].length).setValues(originalHeader);
+    }
+
+    // append current form row to category sheet
+    targetSheet.appendRow(rowData);
+
+    // recalc for this sheet
+    calculateAverage(categoryName);
+    sortAndInsertAYValues(categoryName);
+  }
+
+  // if you want to reprocess all sheets every time
+  processMultipleSheets();
+}
+
+
+function processMultipleSheets() {
+  CONFIG.CATEGORY_SHEET_NAMES.forEach(function (name) {
+    calculateAverage(name);
+    sortAndInsertAYValues(name);
+  });
+}
+
+
+/**
+ * Group rows by E–X columns, sum AX, write avg to AY.
+ */
+function calculateAverage(sheetName) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) {
+    Logger.log("Sheet " + sheetName + " not found.");
+    return;
+  }
+
+  var data = sheet.getDataRange().getValues();
+  var groups = {};
+
+  for (var i = 1; i < data.length; i++) {
+    var key = data[i].slice(4, 24).join(''); // E–X
+    var value = data[i][49]; // AX
+
+    if (!groups[key]) {
+      groups[key] = { sum: 0, count: 0 };
+    }
+    if (typeof value === 'number') {
+      groups[key].sum += value;
+      groups[key].count++;
+    }
+  }
+
+  for (var i = 1; i < data.length; i++) {
+    var key = data[i].slice(4, 24).join('');
+    if (groups[key] && groups[key].count > 0) {
+      var avg = groups[key].sum / groups[key].count;
+      sheet.getRange(i + 1, 51).setValue(Number(avg.toFixed(2))); // AY
+    } else {
+      sheet.getRange(i + 1, 51).setValue('');
+    }
+  }
+}
+
+
+/**
+ * Sort records by AY and write ranking into AZ.
+ */
+function sortAndInsertAYValues(sheetName) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) return;
+
+  var data = sheet.getDataRange().getValues();
+  var result = [];
+
+  for (var i = 1; i < data.length; i++) {
+    var ay = data[i][50]; // AY
+    if (typeof ay === 'number' && !isNaN(ay)) {
+      result.push({
+        value: Number(ay.toFixed(2)),
+        details: data[i].slice(4, 24).join('')
+      });
+    }
+  }
+
+  result.sort(function (a, b) {
+    return b.value - a.value;
+  });
+
+  for (var i = 0; i < result.length; i++) {
+    sheet.getRange(i + 2, 52).setValue(result[i].value + ' - ' + result[i].details); // AZ
+  }
+}
+
+
+/** =========================================================
+ *  2. GENERATE DOCS & PDFs FROM GROUPED ROWS
+ * ========================================================= */
+
+/**
+ * Group rows with same E–X in one sheet, and generate docs for each group.
+ * You can call this manually in Apps Script.
+ */
+function mergeAndCreateGroupedDocs() {
+  var ss = SpreadsheetApp.openById(CONFIG.SOURCE_SPREADSHEET_ID);
+  var sheet = ss.getSheetByName('PLACEHOLDER_CATEGORY_SHEET'); // e.g. 'B04 電子鼓 國小四年級組'
+  var data = sheet.getDataRange().getValues();
+
+  var keyStart = 4;
+  var keyEnd = 23;
+  var grouped = {};
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var key = row.slice(keyStart, keyEnd + 1).join();
+
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(row);
+  }
+
+  for (var key in grouped) {
+    var rows = grouped[key];
+    if (rows.length > 1) {
+      generateDocumentFromGroupedRows(rows, sheet.getName());
+    }
+  }
+}
+
+
+function generateDocumentFromGroupedRows(rows, sheetName) {
+  var templateFile = DriveApp.getFileById(CONFIG.DOC_TEMPLATE_ID);
+  var exData = rows[0].slice(4, 24).join('');
+  var newFile = templateFile.makeCopy(exData + ' 講評單');
+  var doc = DocumentApp.openById(newFile.getId());
+  var body = doc.getBody();
+
+  // basic replacements
+  replaceText(body, '{{樂器別}}', rows[0][1]);
+  var ageGroup = [];
+  if (rows[0][2]) ageGroup.push(rows[0][2]);
+  if (rows[0][3]) ageGroup.push(rows[0][3]);
+  replaceText(body, '{{年齡組別}}', ageGroup.join(', '));
+  replaceText(body, '{{EX_數據}}', exData);
+
+  // judge column config: replace real names with generic identifiers
+  var reviewerColumns = {
+    'JUDGE_A': { start: 25, end: 30, prefix: 'A' },
+    'JUDGE_B': { start: 31, end: 36, prefix: 'B' },
+    'JUDGE_C': { start: 37, end: 42, prefix: 'C' },
+    'JUDGE_D': { start: 43, end: 48, prefix: 'D' }
+  };
+
+  rows.forEach(function (row) {
+    var reviewerName = row[24]; // Y column
+    var config = reviewerColumns[reviewerName];
+    if (config) {
+      var reviewerData = row.slice(config.start, config.end + 1);
+      replaceText(body, `{{${config.prefix}演奏音樂性、律動性}}`, reviewerData[0] || '');
+      replaceText(body, `{{${config.prefix}節奏準確度}}`, reviewerData[1] || '');
+      replaceText(body, `{{${config.prefix}肢體動態協調性}}`, reviewerData[2] || '');
+      replaceText(body, `{{${config.prefix}演奏技術詮釋}}`, reviewerData[3] || '');
+      replaceText(body, `{{${config.prefix}音樂風格的理解、表現力}}`, reviewerData[4] || '');
+      replaceText(body, `{{${config.prefix}綜合評語}}`, reviewerData[5] || '');
+      var roundedAverage = parseFloat(row[50]).toFixed(2);
+      replaceText(body, '{{平均分數}}', roundedAverage);
+    }
+  });
+
+  doc.saveAndClose();
+
+  // export to PDF
+  createPDF(doc, sheetName);
+}
+
+
+function createPDF(doc, sheetName) {
+  var parentName = CONFIG.ROOT_REPORT_FOLDER_NAME;
+  var parentFolder;
+  var pf = DriveApp.getFoldersByName(parentName);
+  parentFolder = pf.hasNext() ? pf.next() : DriveApp.createFolder(parentName);
+
+  var folder;
+  var subFolders = parentFolder.getFoldersByName(sheetName);
+  folder = subFolders.hasNext() ? subFolders.next() : parentFolder.createFolder(sheetName);
+
+  var pdfFile = DriveApp.getFileById(doc.getId()).getAs('application/pdf');
+  var pdfName = doc.getName().replace(' 講評單', '') + ' 講評單.pdf';
+  folder.createFile(pdfFile.setName(pdfName));
+  Logger.log('PDF created: ' + pdfName);
+}
+
+
+/** =========================================================
+ *  3. EMAIL PDFs TO PARTICIPANTS
+ * ========================================================= */
+
+function sendPDFEmailsFromDrive() {
+  var folder = DriveApp.getFolderById(CONFIG.PDF_FOLDER_ID);
+  var files = folder.getFiles();
+
+  while (files.hasNext()) {
+    var file = files.next();
+    var fileName = file.getName();
+
+    if (fileName.includes(' 講評單.pdf')) {
+      var studentId = fileName.replace(' 講評單.pdf', '').trim();
+      var emailAddress = getEmailByStudentId(studentId);
+
+      if (emailAddress) {
+        sendPDFEmail(file.getAs('application/pdf'), emailAddress, studentId, studentId);
+      } else {
+        Logger.log('No email found for: ' + studentId);
+      }
+    }
+  }
+}
+
+
+function getEmailByStudentId(studentId) {
+  var emailSS = SpreadsheetApp.openById(CONFIG.EMAIL_SHEET_ID);
+  var emailData = emailSS.getSheetByName(CONFIG.EMAIL_SHEET_NAME).getDataRange().getValues();
+
+  for (var i = 1; i < emailData.length; i++) {
+    var exDataValue = emailData[i][0].toString().trim();
+    var email = emailData[i][1].toString().trim();
+    if (exDataValue === studentId) {
+      return email;
+    }
+  }
+  return null;
+}
+
+
+function sendPDFEmail(pdfFile, emailAddress, studentId, studentName) {
+  var subject = "比賽講評單 - " + studentId;
+  var message = "您好，附件為您的比賽講評單，請查收。";
+  MailApp.sendEmail({
+    to: emailAddress,
+    subject: subject,
+    body: message,
+    attachments: [pdfFile]
+  });
+  Logger.log('PDF sent to: ' + emailAddress);
+}
+
+
+/** ===== helper ===== */
+function replaceText(body, searchText, replaceText) {
+  body.replaceText(searchText, replaceText || '');
+}
