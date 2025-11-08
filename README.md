@@ -1,8 +1,9 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_7558.jpeg" width="700" alt="project preview">
-  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_2877.JPG" width="350" alt="project used to">
-  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_9467.JPG" width="350" alt="project used to">
+  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_7558.jpeg" width="300" alt="Event photo">
+  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_2877.JPG" width="300" alt="Automation screenshot">
+  <img src="https://raw.githubusercontent.com/JUIKANGHSU/drum-competition-automation/refs/heads/main/IMG_9467.JPG" width="300" alt="Result PDF">
 </p>
+
 # 🥁 Drum Competition Automation (Google Apps Script)
 
 This project automates a full judging workflow for a music/drum competition using **Google Forms + Google Sheets + Google Docs + Google Drive + Gmail**.
